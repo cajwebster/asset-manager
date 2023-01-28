@@ -39,7 +39,7 @@ pub trait Asset: Sized + 'static {
     /// For assets that can be loaded using global resources, this can just be ```()```
     type Resources;
     /// What type of error is returned when the asset can't be loaded
-    type Error: std::fmt::Display + std::fmt::Debug + Clone;
+    type Error: std::fmt::Display + std::fmt::Debug;
 
     /// Loads an asset from a given path
     /// # Errors
@@ -47,15 +47,15 @@ pub trait Asset: Sized + 'static {
     fn load(path: impl AsRef<Path>, resources: &Self::Resources) -> Result<Self, Self::Error>;
 }
 
-enum AssetState {
+enum AssetState<E> {
     Loaded(usize),
     Unloaded(PathBuf),
-    Error(PathBuf, String),
+    Error(PathBuf, E),
 }
 
 /// A handle to an asset of type `T`. Used with an [`AssetManager<T>`].
 pub struct AssetHandle<T: Asset> {
-    state: AssetState,
+    state: AssetState<T::Error>,
     _asset: PhantomData<T>,
 }
 
@@ -117,11 +117,11 @@ impl<T: Asset> AssetManager<T> {
     /// Returns an error if the [load](Asset::load) method returns an error.
     /// Returns `Ok` if the asset is already loaded, or if a previous attempt
     /// to load the asset failed.
-    pub fn load(
+    pub fn load<'a>(
         &mut self,
-        handle: &mut AssetHandle<T>,
+        handle: &'a mut AssetHandle<T>,
         resources: &T::Resources,
-    ) -> Result<(), T::Error> {
+    ) -> Result<(), &'a T::Error> {
         match &handle.state {
             AssetState::Loaded(_) | AssetState::Error(_, _) => Ok(()),
             AssetState::Unloaded(path) => {
@@ -140,8 +140,11 @@ impl<T: Asset> AssetManager<T> {
                         Ok(())
                     }
                     Err(e) => {
-                        handle.state = AssetState::Error(path.clone(), format!("{e}"));
-                        Err(e)
+                        handle.state = AssetState::Error(path.clone(), e);
+                        match &handle.state {
+                            AssetState::Error(_, e) => Err(e),
+                            _ => unreachable!(),
+                        }
                     }
                 }
             }
