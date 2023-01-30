@@ -78,6 +78,18 @@ impl<T: Asset> AssetHandle<T> {
     }
 
     #[must_use]
+    /// Returns true if the asset hasn't been loaded yet.
+    pub fn is_unloaded(&self) -> bool {
+        matches!(self.state, AssetState::Unloaded(_))
+    }
+
+    #[must_use]
+    /// Returns true if the asset has been succesfully loaded.
+    pub fn is_loaded(&self) -> bool {
+        matches!(self.state, AssetState::Loaded(_))
+    }
+
+    #[must_use]
     /// Returns true if the asset previously failed to load.
     pub fn is_err(&self) -> bool {
         matches!(self.state, AssetState::Error(_, _))
