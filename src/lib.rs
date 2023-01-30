@@ -136,30 +136,36 @@ impl<T: Asset> AssetManager<T> {
     ) -> Result<(), &'a T::Error> {
         match &handle.state {
             AssetState::Loaded(_) | AssetState::Error(_, _) => Ok(()),
-            AssetState::Unloaded(path) => {
-                log::debug!(
-                    "Loading asset '{}' of type '{}'",
-                    path.display(),
-                    std::any::type_name::<T>()
-                );
-                let idx = self.assets.len();
-                let loaded_asset = T::load(path, resources);
-                match loaded_asset {
-                    Ok(loaded_asset) => {
-                        self.assets.push(loaded_asset);
-                        self.paths.insert(path.clone(), idx);
-                        handle.state = AssetState::Loaded(idx);
-                        Ok(())
-                    }
-                    Err(e) => {
-                        handle.state = AssetState::Error(path.clone(), e);
-                        match &handle.state {
-                            AssetState::Error(_, e) => Err(e),
-                            _ => unreachable!(),
+            AssetState::Unloaded(path) => match self.paths.get(path) {
+                Some(&idx) => {
+                    handle.state = AssetState::Loaded(idx);
+                    Ok(())
+                }
+                None => {
+                    log::debug!(
+                        "Loading asset '{}' of type '{}'",
+                        path.display(),
+                        std::any::type_name::<T>()
+                    );
+                    let idx = self.assets.len();
+                    let loaded_asset = T::load(path, resources);
+                    match loaded_asset {
+                        Ok(loaded_asset) => {
+                            self.assets.push(loaded_asset);
+                            self.paths.insert(path.clone(), idx);
+                            handle.state = AssetState::Loaded(idx);
+                            Ok(())
+                        }
+                        Err(e) => {
+                            handle.state = AssetState::Error(path.clone(), e);
+                            match &handle.state {
+                                AssetState::Error(_, e) => Err(e),
+                                _ => unreachable!(),
+                            }
                         }
                     }
                 }
-            }
+            },
         }
     }
 }
