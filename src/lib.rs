@@ -29,6 +29,7 @@
 
 use std::{
     collections::HashMap,
+    hash::Hash,
     marker::PhantomData,
     path::{Path, PathBuf},
 };
@@ -52,6 +53,29 @@ enum AssetState<E> {
     Loaded(usize),
     Unloaded(PathBuf),
     Error(PathBuf, E),
+}
+
+impl<E> PartialEq for AssetState<E> {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Loaded(idx1), Self::Loaded(idx2)) => idx1 == idx2,
+            (Self::Unloaded(path1), Self::Unloaded(path2))
+            | (Self::Error(path1, _), Self::Error(path2, _)) => path1 == path2,
+            _ => false,
+        }
+    }
+}
+
+impl<E> Eq for AssetState<E> {}
+
+impl<E> Hash for AssetState<E> {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        std::mem::discriminant(self).hash(state);
+        match self {
+            Self::Loaded(idx) => idx.hash(state),
+            Self::Unloaded(path) | Self::Error(path, _) => path.hash(state),
+        }
+    }
 }
 
 /// A handle to an asset of type `T`. Used with an [`AssetManager<T>`].
@@ -95,6 +119,20 @@ impl<T: Asset> AssetHandle<T> {
     /// Returns true if the asset previously failed to load.
     pub fn is_err(&self) -> bool {
         matches!(self.state, AssetState::Error(_, _))
+    }
+}
+
+impl<T: Asset> PartialEq for AssetHandle<T> {
+    fn eq(&self, other: &Self) -> bool {
+        self.state == other.state
+    }
+}
+
+impl<T: Asset> Eq for AssetHandle<T> {}
+
+impl<T: Asset> Hash for AssetHandle<T> {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.state.hash(state);
     }
 }
 
