@@ -47,6 +47,7 @@ pub trait Asset: Sized + 'static {
     fn load(path: impl AsRef<Path>, resources: &Self::Resources) -> Result<Self, Self::Error>;
 }
 
+#[derive(Clone)]
 enum AssetState<E> {
     Loaded(usize),
     Unloaded(PathBuf),
@@ -54,6 +55,7 @@ enum AssetState<E> {
 }
 
 /// A handle to an asset of type `T`. Used with an [`AssetManager<T>`].
+#[derive(Clone)]
 pub struct AssetHandle<T: Asset> {
     state: AssetState<T::Error>,
     _asset: PhantomData<T>,
