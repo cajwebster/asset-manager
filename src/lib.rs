@@ -79,7 +79,6 @@ impl<E> Hash for AssetState<E> {
 }
 
 /// A handle to an asset of type `T`. Used with an [`AssetManager<T>`].
-#[derive(Clone)]
 pub struct AssetHandle<T: Asset> {
     state: AssetState<T::Error>,
     _asset: PhantomData<T>,
@@ -133,6 +132,18 @@ impl<T: Asset> Eq for AssetHandle<T> {}
 impl<T: Asset> Hash for AssetHandle<T> {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.state.hash(state);
+    }
+}
+
+impl<T: Asset> Clone for AssetHandle<T>
+where
+    T::Error: Clone,
+{
+    fn clone(&self) -> Self {
+        Self {
+            state: self.state.clone(),
+            _asset: PhantomData,
+        }
     }
 }
 
