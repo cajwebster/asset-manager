@@ -48,11 +48,19 @@ pub trait Asset: Sized + 'static {
     fn load(path: impl AsRef<Path>, resources: &Self::Resources) -> Result<Self, Self::Error>;
 }
 
-#[derive(Clone)]
 enum AssetState<E> {
     Loaded(usize),
     Unloaded(PathBuf),
     Error(PathBuf, E),
+}
+
+impl<E> Clone for AssetState<E> {
+    fn clone(&self) -> Self {
+        match self {
+            &Self::Loaded(idx) => Self::Loaded(idx),
+            Self::Unloaded(path) | Self::Error(path, _) => Self::Unloaded(path.clone()),
+        }
+    }
 }
 
 impl<E> PartialEq for AssetState<E> {
@@ -135,10 +143,7 @@ impl<T: Asset> Hash for AssetHandle<T> {
     }
 }
 
-impl<T: Asset> Clone for AssetHandle<T>
-where
-    T::Error: Clone,
-{
+impl<T: Asset> Clone for AssetHandle<T> {
     fn clone(&self) -> Self {
         Self {
             state: self.state.clone(),
